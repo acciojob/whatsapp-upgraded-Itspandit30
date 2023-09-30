@@ -26,6 +26,8 @@ public class WhatsappController {
     public String createUser(String name, String mobile) throws Exception {
         //If the mobile number exists in database, throw "User already exists" exception
         //Otherwise, create the user and return "SUCCESS"
+        if (whatsappService.isExsists(mobile))
+            throw new Exception("User already exists");
 
         return whatsappService.createUser(name, mobile);
     }
@@ -40,16 +42,23 @@ public class WhatsappController {
 
         //For example: Consider userList1 = {Alex, Bob, Charlie}, userList2 = {Dan, Evan}, userList3 = {Felix, Graham, Hugh}.
         //If createGroup is called for these userLists in the same order, their group names would be "Group 1", "Evan", and "Group 2" respectively.
+        int size = users.size();
+        Group group = null;
+        if(size == 2)
+            group = new Group(users.get(1).name, size);
+        else if(size > 2)
+            group = new Group("Group " + size, size);
 
-        return whatsappService.createGroup(users);
+        return whatsappService.createGroup(group);
     }
 
     @PostMapping("/add-message")
     public int createMessage(String content){
         // The 'i^th' created message has message id 'i'.
         // Return the message id.
+        Message msg = new Message(1, content, new Date());
 
-        return whatsappService.createMessage(content);
+        return whatsappService.createMessage(msg);
     }
 
     @PutMapping("/send-message")
@@ -57,7 +66,10 @@ public class WhatsappController {
         //Throw "Group does not exist" if the mentioned group does not exist
         //Throw "You are not allowed to send message" if the sender is not a member of the group
         //If the message is sent successfully, return the final number of messages in that group.
-
+        if(!whatsappService.isGroupExists(group))
+            throw new Exception("Group does not exist");
+        if (!whatsappService.isGroupMember(sender))
+            throw new Exception("You are not allowed to send message");
         return whatsappService.sendMessage(message, sender, group);
     }
     @PutMapping("/change-admin")
@@ -66,7 +78,12 @@ public class WhatsappController {
         //Throw "Approver does not have rights" if the approver is not the current admin of the group
         //Throw "User is not a participant" if the user is not a part of the group
         //Change the admin of the group to "user" and return "SUCCESS". Note that at one time there is only one admin and the admin rights are transferred from approver to user.
-
+        if(!whatsappService.isGroupExists(group))
+            throw new Exception("Group does not exist");
+        if (!whatsappService.isAdmin(approver))
+            throw new Exception("Approver does not have rights");
+        if (!whatsappService.isGroupMember(user))
+            throw new Exception("User is not a participant");
         return whatsappService.changeAdmin(approver, user, group);
     }
 
@@ -77,7 +94,10 @@ public class WhatsappController {
         //If user is found in a group and it is the admin, throw "Cannot remove admin" exception
         //If user is not the admin, remove the user from the group, remove all its messages from all the databases, and update relevant attributes accordingly.
         //If user is removed successfully, return (the updated number of users in the group + the updated number of messages in group + the updated number of overall messages)
-
+        if (!whatsappService.isGroupMember(user))
+            throw new Exception("User not found");
+        if (whatsappService.isAdmin(user))
+            throw new Exception("Cannot remove admin");
         return whatsappService.removeUser(user);
     }
 
@@ -86,6 +106,8 @@ public class WhatsappController {
         // This is a bonus problem and does not contains any marks
         // Find the Kth latest message between start and end (excluding start and end)
         // If the number of messages between given time is less than K, throw "K is greater than the number of messages" exception
+        if (whatsappService.messageCount(start, end) < K)
+            throw new Exception("K is greater than the number of messages");
 
         return whatsappService.findMessage(start, end, K);
     }
